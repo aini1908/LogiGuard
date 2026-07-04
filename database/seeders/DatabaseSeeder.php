@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             SentimentLexiconSeeder::class,
+            CountrySeeder::class,
         ]);
     }
 }
