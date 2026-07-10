@@ -58,6 +58,39 @@
             </div>
         </div>
 
+        <!-- FITUR 1: PANEL GLOBAL COUNTRY DASHBOARD (INTEGRASI MULTI-API) -->
+        <div class="row mb-4 d-none" id="countryDetailPanel">
+            <div class="col-md-12">
+                <div class="card shadow-sm border-0 bg-white">
+                    <div class="card-header bg-secondary text-white fw-bold py-2">🌍 Global Country & Weather Dashboard (<span id="infoCountryName">-</span>)</div>
+                    <div class="card-body p-3">
+                        <div class="row text-center">
+                            <div class="col-md-2 border-end">
+                                <span class="text-muted small d-block">GDP Nominal</span>
+                                <h5 class="fw-bold text-primary mb-0" id="infoGdp">-</h5>
+                            </div>
+                            <div class="col-md-2 border-end">
+                                <span class="text-muted small d-block">Inflasi Riil</span>
+                                <h5 class="fw-bold text-warning mb-0" id="infoInflation">-</h5>
+                            </div>
+                            <div class="col-md-2 border-end">
+                                <span class="text-muted small d-block">Total Populasi</span>
+                                <h5 class="fw-bold text-dark mb-0" id="infoPopulation">-</h5>
+                            </div>
+                            <div class="col-md-3 border-end">
+                                <span class="text-muted small d-block">Suhu Real-Time</span>
+                                <h5 class="fw-bold text-info mb-0" id="infoTemp">-</h5>
+                            </div>
+                            <div class="col-md-3">
+                                <span class="text-muted small d-block">Kecepatan Angin</span>
+                                <h5 class="fw-bold text-success mb-0" id="infoWind">-</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row">
             <div class="col-lg-7 mb-4">
                 <div id="map"></div>
@@ -149,6 +182,7 @@
         }).addTo(map);
 
         let markerLayers = {};
+        let cachedWeather = {}; // Menyimpan data cuaca real-time negara terpilih
 
         // Ambil data negara dinamis
         function loadCountries() {
@@ -173,8 +207,8 @@
                 });
         }
 
-        // Gambar pin marker modern bulat berwarna
-        function createOrUpdateMarker(country, riskLevel) {
+        // FITUR 3: Gambar pin marker modern & integrasikan status cuaca interaktif dari API[cite: 1]
+        function createOrUpdateMarker(country, riskLevel, weatherInfo = null) {
             if (markerLayers[country.id]) {
                 map.removeLayer(markerLayers[country.id]);
             }
@@ -185,6 +219,18 @@
             if (riskLevel === 'Medium') { colorClass = 'marker-pin-medium'; levelLabel = '🟡 Medium (Waspada)'; }
             if (riskLevel === 'High') { colorClass = 'marker-pin-high'; levelLabel = '🔴 High (Bahaya/Krisis)'; }
 
+            // Logika Evaluasi Cuaca Global Ekstrem (Fitur 3)[cite: 1]
+            let weatherStatus = "☀️ Cerah / Normal";
+            if (weatherInfo) {
+                if (parseFloat(weatherInfo.wind_speed) > 15) {
+                    weatherStatus = "🌪 Easton / Badai";
+                } else if (parseInt(weatherInfo.weather_code) >= 51) {
+                    weatherStatus = "🌧️ Cuaca Ekstrem / Hujan";
+                } else {
+                    weatherStatus = `🌤️ Normal (${weatherInfo.temperature}°C)`;
+                }
+            }
+
             let icon = L.divIcon({
                 className: 'custom-marker-wrapper',
                 html: `<div class="custom-div-icon ${colorClass}"></div>`,
@@ -193,104 +239,19 @@
             });
 
             let marker = L.marker([country.latitude, country.longitude], {icon: icon}).addTo(map);
+            
             marker.bindPopup(`
                 <div class="p-1">
                     <h6 class="fw-bold mb-1">${country.name}</h6>
-                    <p class="mb-0 small">Status: <b>${levelLabel}</b></p>
+                    <p class="mb-1 small">Status: <b>${levelLabel}</b></p>
+                    <p class="mb-0 small">Kondisi Alam: <span class="badge bg-dark text-white">${weatherStatus}</span></p>
                 </div>
             `);
 
             markerLayers[country.id] = marker;
         }
 
-        loadCountries();
-
-// Submit Form lewat AJAX POST (Versi Super Stabil & Bersih)
-document.getElementById('riskForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-
-    // 1. Ambil token keamanan CSRF
-    const tokenEl = document.querySelector('input[name="_token"]');
-    if (!tokenEl) {
-        alert('Token CSRF tidak ditemukan! Pastikan @csrf ada di dalam tag <form>');
-        return;
-    }
-    const token = tokenEl.value;
-
-    // 2. Ambil semua komponen nilai input
-    const countryId = document.getElementById('countrySelect').value;
-    const newsText = document.getElementById('newsText').value;
-    const weatherScore = parseFloat(document.getElementById('weatherScore').value) || 0;
-    const inflationScore = parseFloat(document.getElementById('inflationScore').value) || 0;
-    const exchangeScore = parseFloat(document.getElementById('exchangeScore').value) || 0;
-
-    const data = {
-        country_id: countryId,
-        news_text: newsText,
-        weather_score: weatherScore,
-        inflation_score: inflationScore,
-        exchange_rate_score: exchangeScore
-    };
-
-    // 3. Terbangkan data ke Backend Laravel
-    fetch('/api/risk/analyze', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': token
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Respon server bermasalah (Status: ' + response.status + ')');
-        }
-        return response.json();
-    })
-    .then(result => {
-        if (result.status === 'success') {
-            // Munculkan card output hasil kalkulasi AI
-            const resCard = document.getElementById('resultCard');
-            resCard.classList.remove('d-none');
-            
-            document.getElementById('resPos').innerText = result.results.positive_words_found;
-            document.getElementById('resNeg').innerText = result.results.negative_words_found;
-            document.getElementById('resSentScore').innerText = result.results.news_sentiment_score;
-            document.getElementById('resTotalScore').innerText = result.results.total_risk_score;
-            
-            const lvlBadge = document.getElementById('resLevel');
-            lvlBadge.innerText = result.results.risk_level;
-            
-            // Atur warna badge dinamis
-            lvlBadge.className = 'badge fs-5 px-4 py-2 ';
-            if (result.results.risk_level === 'Low') lvlBadge.classList.add('bg-success');
-            if (result.results.risk_level === 'Medium') lvlBadge.classList.add('bg-warning', 'text-dark');
-            if (result.results.risk_level === 'High') lvlBadge.classList.add('bg-danger');
-
-            // 4. Ubah warna pin marker di peta secara langsung & aman
-            const selectEl = document.getElementById('countrySelect');
-            const countryName = selectEl.options[selectEl.selectedIndex].text;
-            
-            if (markerLayers[countryId]) {
-                const currentLatLng = markerLayers[countryId].getLatLng();
-                
-                createOrUpdateMarker({
-                    id: countryId,
-                    name: countryName,
-                    latitude: currentLatLng.lat,
-                    longitude: currentLatLng.lng
-                }, result.results.risk_level);
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error detail:', error);
-        alert('Gagal memproses kalkulasi AI. Pastikan server MAMP MySQL Anda sedang menyala hijau aktif.');
-    });
-});
-
-        loadCountries();
+        // Ambil data pelabuhan publik[cite: 1]
         function loadPorts() {
             fetch('/api/ports')
                 .then(response => response.json())
@@ -298,7 +259,6 @@ document.getElementById('riskForm').addEventListener('submit', function(e) {
                     if (result.status === 'success') {
                         result.data.forEach(port => {
                             if (port.latitude && port.longitude) {
-                                // Membuat penanda lingkaran kecil berwarna Oranye untuk membedakan dengan Negara
                                 const portMarker = L.circleMarker([port.latitude, port.longitude], {
                                     radius: 5,
                                     fillColor: '#ff7800', // Oranye khas logistik maritim
@@ -308,7 +268,6 @@ document.getElementById('riskForm').addEventListener('submit', function(e) {
                                     fillOpacity: 0.8
                                 }).addTo(map);
 
-                                // Tambahkan popup informatif saat jangkar pelabuhan diklik
                                 portMarker.bindPopup(`
                                     <div class="p-1">
                                         <h6 class="fw-bold mb-1" style="color: #ff7800;">⚓ Pelabuhan ${port.name}</h6>
@@ -323,8 +282,148 @@ document.getElementById('riskForm').addEventListener('submit', function(e) {
                 .catch(error => console.error('Error detail load ports:', error));
         }
 
-        // 3. Jalankan fungsi load ports
+        // Jalankan pemuatan data awal
+        loadCountries();
         loadPorts();
+
+        // ====================================================================
+        // INTERSEPSI DROPDOWN: AMBIL DATA WORLD BANK & OPEN-METEO[cite: 1]
+        // ====================================================================
+        document.getElementById('countrySelect').addEventListener('change', function() {
+            const countryId = this.value;
+            const selectedOption = this.options[this.selectedIndex];
+            if (!selectedOption || countryId === "") {
+                document.getElementById('countryDetailPanel').classList.add('d-none');
+                return;
+            }
+
+            // Ekstrak kode 2 huruf dari teks (misal: "Indonesia (ID)" -> "ID")
+            const textMatch = selectedOption.text.match(/\(([^)]+)\)/);
+            const countryCode = textMatch ? textMatch[1] : null;
+
+            if (!countryCode) return;
+
+            fetch(`/api/countries/${countryCode}/detail`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Gagal memuat data detail multi-API');
+                    return response.json();
+                })
+                .then(result => {
+                    if (result.status === 'success') {
+                        const data = result.data;
+                        
+                        document.getElementById('countryDetailPanel').classList.remove('d-none');
+                        document.getElementById('infoCountryName').innerText = data.country_name;
+
+                        // Tampilkan Data Ekonomi (World Bank)[cite: 1]
+                        document.getElementById('infoGdp').innerText = data.gdp ? '$' + (data.gdp / 1e9).toFixed(2) + ' B' : 'N/A';
+                        document.getElementById('infoInflation').innerText = data.inflation ? data.inflation.toFixed(2) + '%' : 'N/A';
+                        document.getElementById('infoPopulation').innerText = data.population ? (data.population / 1e6).toFixed(2) + ' M' : 'N/A';
+                        
+                        // Tampilkan Data Cuaca (Open-Meteo)[cite: 1]
+                        document.getElementById('infoTemp').innerText = data.weather.temperature !== null ? data.weather.temperature + '°C' : 'N/A';
+                        document.getElementById('infoWind').innerText = data.weather.wind_speed !== null ? data.weather.wind_speed + ' km/h' : 'N/A';
+
+                        // Amankan objek cuaca ke memori jangka pendek untuk popup peta (Fitur 3)[cite: 1]
+                        cachedWeather[countryId] = data.weather;
+
+                        // Perbarui popup marker saat itu juga agar menampilkan status cuaca satelit
+                        if (markerLayers[countryId]) {
+                            const currentLatLng = markerLayers[countryId].getLatLng();
+                            createOrUpdateMarker({
+                                id: countryId,
+                                name: selectedOption.text.split(' (')[0],
+                                latitude: currentLatLng.lat,
+                                longitude: currentLatLng.lng
+                            }, 'Default', data.weather);
+                        }
+                    }
+                })
+                .catch(err => console.error("Gagal memuat data dashboard makro:", err));
+        });
+
+        // ====================================================================
+        // PROSES SUBMIT ANALISIS RISIKO AI SENTIMEN (WEIGHTED MODEL)[cite: 1]
+        // ====================================================================
+        document.getElementById('riskForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const tokenEl = document.querySelector('input[name="_token"]');
+            if (!tokenEl) {
+                alert('Token CSRF tidak ditemukan! Pastikan @csrf ada di dalam tag <form>');
+                return;
+            }
+            const token = tokenEl.value;
+
+            const countryId = document.getElementById('countrySelect').value;
+            const newsText = document.getElementById('newsText').value;
+            const weatherScore = parseFloat(document.getElementById('weatherScore').value) || 0;
+            const inflationScore = parseFloat(document.getElementById('inflationScore').value) || 0;
+            const exchangeScore = parseFloat(document.getElementById('exchangeScore').value) || 0;
+
+            const data = {
+                country_id: countryId,
+                news_text: newsText,
+                weather_score: weatherScore,
+                inflation_score: inflationScore,
+                exchange_rate_score: exchangeScore
+            };
+
+            fetch('/api/risk/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': token
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Respon server bermasalah (Status: ' + response.status + ')');
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.status === 'success') {
+                    const resCard = document.getElementById('resultCard');
+                    resCard.classList.remove('d-none');
+                    
+                    document.getElementById('resPos').innerText = result.results.positive_words_found;
+                    document.getElementById('resNeg').innerText = result.results.negative_words_found;
+                    document.getElementById('resSentScore').innerText = result.results.news_sentiment_score;
+                    document.getElementById('resTotalScore').innerText = result.results.total_risk_score;
+                    
+                    const lvlBadge = document.getElementById('resLevel');
+                    lvlBadge.innerText = result.results.risk_level;
+                    
+                    lvlBadge.className = 'badge fs-5 px-4 py-2 ';
+                    if (result.results.risk_level === 'Low') lvlBadge.classList.add('bg-success');
+                    if (result.results.risk_level === 'Medium') lvlBadge.classList.add('bg-warning', 'text-dark');
+                    if (result.results.risk_level === 'High') lvlBadge.classList.add('bg-danger');
+
+                    const selectEl = document.getElementById('countrySelect');
+                    const countryName = selectEl.options[selectEl.selectedIndex].text.split(' (')[0];
+                    
+                    // Ubah warna pin marker serta pertahankan popup status cuaca satelitnya
+                    if (markerLayers[countryId]) {
+                        const currentLatLng = markerLayers[countryId].getLatLng();
+                        const weatherData = cachedWeather[countryId] || null;
+                        
+                        createOrUpdateMarker({
+                            id: countryId,
+                            name: countryName,
+                            latitude: currentLatLng.lat,
+                            longitude: currentLatLng.lng
+                        }, result.results.risk_level, weatherData);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error detail:', error);
+                alert('Gagal memproses kalkulasi AI. Pastikan MAMP MySQL Anda aktif.');
+            });
+        });
     </script>
 </body>
 </html>

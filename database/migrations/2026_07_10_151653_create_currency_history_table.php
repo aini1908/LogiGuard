@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
 {
-    Schema::create('watchlists', function (Blueprint $table) {
+    Schema::create('currency_history', function (Blueprint $table) {
         $table->id();
-        $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Relasi ke tabel users
-        $table->string('country_code', 5); // Negara yang difavoritkan
-        $table->text('notes')->nullable(); // Catatan kustom dari pebisnis
+        $table->string('currency_code', 5); // Contoh: USD, IDR, AUD
+        $table->double('exchange_rate', 15, 4); // Nilai kurs terhadap basis mata uang
+        $table->date('recorded_date'); // Untuk sumbu X di Chart.js
         $table->timestamps();
     });
 }
@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('watchlists');
+        Schema::dropIfExists('currency_history');
     }
 };

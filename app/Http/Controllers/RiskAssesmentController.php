@@ -68,35 +68,37 @@ class RiskAssesmentController extends Controller
         if ($totalSentimentWords > 0) {
             $newsSentimentScore = ($negCount / $totalSentimentWords) * 5;
         }
-        // 6. Gabungkan dengan variabel eksternal (Rumus Total Skor Risiko Gabungan)
-        $weather = $request->weather_score;
-        $inflation = $request->inflation_score;
-        $exchange = $request->exchange_rate_score;
+       // 6. GABUNGKAN DENGAN BOBOT PERSENTASE (Weighted Risk Model - Sesuai Spesifikasi PDF)
+       $weather = $request->weather_score;
+       $inflation = $request->inflation_score;
+       $exchange = $request->exchange_rate_score;
 
-        $totalRiskScore = ($weather + $inflation + $exchange + $newsSentimentScore) / 4;
+       // Rumus Persentase: (Weather * 30%) + (Inflation * 20%) + (News * 40%) + (Currency * 10%)
+       $totalRiskScore = ($weather * 0.3) + ($inflation * 0.2) + ($newsSentimentScore * 0.4) + ($exchange * 0.1);
 
-        if ($totalRiskScore <= 1.5) {
-            $riskLevel = 'Low';
-        } elseif ($totalRiskScore <= 3.5) {
-            $riskLevel = 'Medium';
-        } else {
-            $riskLevel = 'High';
-        }
+       // Skala tingkat risiko disesuaikan dengan nilai bobot akhir (Max nilai adalah 5)
+       if ($totalRiskScore <= 1.5) {
+           $riskLevel = 'Low';
+       } elseif ($totalRiskScore <= 3.5) {
+           $riskLevel = 'Medium';
+       } else {
+           $riskLevel = 'High';
+       }
 
-        // Di sini diubah menggunakan $dbCountryId yang sudah berupa Angka murni
-        DB::table('risk_scores')->updateOrInsert(
-            ['country_id' => $dbCountryId],
-            [
-                'weather_score' => $weather,
-                'inflation_score' => $inflation,
-                'exchange_rate_score' => $exchange,
-                'news_sentiment_score' => $newsSentimentScore,
-                'total_risk_score' => $totalRiskScore,
-                'risk_level' => $riskLevel,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        );
+       // Di sini diubah menggunakan $dbCountryId yang sudah berupa Angka murni
+       DB::table('risk_scores')->updateOrInsert(
+           ['country_id' => $dbCountryId],
+           [
+               'weather_score' => $weather,
+               'inflation_score' => $inflation,
+               'exchange_rate_score' => $exchange,
+               'news_sentiment_score' => $newsSentimentScore,
+               'total_risk_score' => $totalRiskScore, // Menyimpan nilai berbobot asli
+               'risk_level' => $riskLevel,
+               'created_at' => now(),
+               'updated_at' => now(),
+           ]
+       );
 
         return response()->json([
             'status' => 'success',

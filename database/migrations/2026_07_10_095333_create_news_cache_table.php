@@ -10,19 +10,19 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void
-    {
-        Schema::create('news_cache', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('country_id')->constrained('countries')->onDelete('cascade');
-            $table->string('title');
-            $table->text('description')->nullable();
-            $table->string('url');
-            $table->string('source_name');
-            $table->string('sentiment_label')->default('Neutral');
-            $table->timestamp('published_at');
-            $table->timestamps();
-        });
-    }
+{
+    Schema::create('news_cache', function (Blueprint $table) {
+        $table->id();
+        $table->string('country_code', 5); // Berelasi dengan kode teks negara (contoh: 'AU')
+        $table->string('title');
+        $table->string('source_name')->nullable();
+        $table->text('description')->nullable();
+        $table->text('url')->nullable();
+        $table->string('category')->default('logistics'); // logistics, trade, shipping, economy
+        $table->timestamp('published_at')->nullable();
+        $table->timestamps();
+    });
+}
 
     /**
      * Reverse the migrations.
