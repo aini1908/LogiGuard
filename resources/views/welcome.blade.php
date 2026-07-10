@@ -205,92 +205,126 @@
 
         loadCountries();
 
-// Submit Form lewat AJAX POST (Versi Perbaikan Stabil)
+// Submit Form lewat AJAX POST (Versi Super Stabil & Bersih)
 document.getElementById('riskForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+    e.preventDefault();
 
-            // 1. Ambil token keamanan CSRF
-            const tokenEl = document.querySelector('input[name="_token"]');
-            if (!tokenEl) {
-                alert('Token CSRF tidak ditemukan! Pastikan @csrf ada di dalam tag <form>');
-                return;
+    // 1. Ambil token keamanan CSRF
+    const tokenEl = document.querySelector('input[name="_token"]');
+    if (!tokenEl) {
+        alert('Token CSRF tidak ditemukan! Pastikan @csrf ada di dalam tag <form>');
+        return;
+    }
+    const token = tokenEl.value;
+
+    // 2. Ambil semua komponen nilai input
+    const countryId = document.getElementById('countrySelect').value;
+    const newsText = document.getElementById('newsText').value;
+    const weatherScore = parseFloat(document.getElementById('weatherScore').value) || 0;
+    const inflationScore = parseFloat(document.getElementById('inflationScore').value) || 0;
+    const exchangeScore = parseFloat(document.getElementById('exchangeScore').value) || 0;
+
+    const data = {
+        country_id: countryId,
+        news_text: newsText,
+        weather_score: weatherScore,
+        inflation_score: inflationScore,
+        exchange_rate_score: exchangeScore
+    };
+
+    // 3. Terbangkan data ke Backend Laravel
+    fetch('/api/risk/analyze', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': token
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Respon server bermasalah (Status: ' + response.status + ')');
+        }
+        return response.json();
+    })
+    .then(result => {
+        if (result.status === 'success') {
+            // Munculkan card output hasil kalkulasi AI
+            const resCard = document.getElementById('resultCard');
+            resCard.classList.remove('d-none');
+            
+            document.getElementById('resPos').innerText = result.results.positive_words_found;
+            document.getElementById('resNeg').innerText = result.results.negative_words_found;
+            document.getElementById('resSentScore').innerText = result.results.news_sentiment_score;
+            document.getElementById('resTotalScore').innerText = result.results.total_risk_score;
+            
+            const lvlBadge = document.getElementById('resLevel');
+            lvlBadge.innerText = result.results.risk_level;
+            
+            // Atur warna badge dinamis
+            lvlBadge.className = 'badge fs-5 px-4 py-2 ';
+            if (result.results.risk_level === 'Low') lvlBadge.classList.add('bg-success');
+            if (result.results.risk_level === 'Medium') lvlBadge.classList.add('bg-warning', 'text-dark');
+            if (result.results.risk_level === 'High') lvlBadge.classList.add('bg-danger');
+
+            // 4. Ubah warna pin marker di peta secara langsung & aman
+            const selectEl = document.getElementById('countrySelect');
+            const countryName = selectEl.options[selectEl.selectedIndex].text;
+            
+            if (markerLayers[countryId]) {
+                const currentLatLng = markerLayers[countryId].getLatLng();
+                
+                createOrUpdateMarker({
+                    id: countryId,
+                    name: countryName,
+                    latitude: currentLatLng.lat,
+                    longitude: currentLatLng.lng
+                }, result.results.risk_level);
             }
-            const token = tokenEl.value;
+        }
+    })
+    .catch(error => {
+        console.error('Error detail:', error);
+        alert('Gagal memproses kalkulasi AI. Pastikan server MAMP MySQL Anda sedang menyala hijau aktif.');
+    });
+});
 
-            // 2. Ambil semua komponen nilai input
-            const countryId = document.getElementById('countrySelect').value;
-            const newsText = document.getElementById('newsText').value;
-            const weatherScore = parseFloat(document.getElementById('weatherScore').value) || 0;
-            const inflationScore = parseFloat(document.getElementById('inflationScore').value) || 0;
-            const exchangeScore = parseFloat(document.getElementById('exchangeScore').value) || 0;
+        loadCountries();
+        function loadPorts() {
+            fetch('/api/ports')
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === 'success') {
+                        result.data.forEach(port => {
+                            if (port.latitude && port.longitude) {
+                                // Membuat penanda lingkaran kecil berwarna Oranye untuk membedakan dengan Negara
+                                const portMarker = L.circleMarker([port.latitude, port.longitude], {
+                                    radius: 5,
+                                    fillColor: '#ff7800', // Oranye khas logistik maritim
+                                    color: '#000',
+                                    weight: 1,
+                                    opacity: 1,
+                                    fillOpacity: 0.8
+                                }).addTo(map);
 
-            const data = {
-                country_id: countryId,
-                news_text: newsText,
-                weather_score: weatherScore,
-                inflation_score: inflationScore,
-                exchange_rate_score: exchangeScore
-            };
-
-            // 3. Terbangkan data ke Backend Laravel
-            fetch('/api/risk/analyze', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': token
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Respon server bermasalah (Status: ' + response.status + ')');
-                }
-                return response.json();
-            })
-            .then(result => {
-                if (result.status === 'success') {
-                    // Munculkan card output hasil kalkulasi AI
-                    const resCard = document.getElementById('resultCard');
-                    resCard.classList.remove('d-none');
-                    
-                    document.getElementById('resPos').innerText = result.results.positive_words_found;
-                    document.getElementById('resNeg').innerText = result.results.negative_words_found;
-                    document.getElementById('resSentScore').innerText = result.results.news_sentiment_score;
-                    document.getElementById('resTotalScore').innerText = result.results.total_risk_score;
-                    
-                    const lvlBadge = document.getElementById('resLevel');
-                    lvlBadge.innerText = result.results.risk_level;
-                    
-                    // Atur warna badge dinamis
-                    lvlBadge.className = 'badge fs-5 px-4 py-2 ';
-                    if (result.results.risk_level === 'Low') lvlBadge.classList.add('bg-success');
-                    if (result.results.risk_level === 'Medium') lvlBadge.classList.add('bg-warning', 'text-dark');
-                    if (result.results.risk_level === 'High') lvlBadge.classList.add('bg-danger');
-
-                    // 4. Detik ini juga, ubah warna pin marker di peta secara langsung!
-                    const selectEl = document.getElementById('countrySelect');
-                    const countryName = selectEl.options[selectEl.selectedIndex].text;
-                    let lat = 0;
-                    let lng = 0;
-                    if (markerLayers[countryId]) {
-                        lat = markerLayers[countryId].getLatLng().lat;
-                        lng = marlerLayers[countryId].getLatLng().lng;
+                                // Tambahkan popup informatif saat jangkar pelabuhan diklik
+                                portMarker.bindPopup(`
+                                    <div class="p-1">
+                                        <h6 class="fw-bold mb-1" style="color: #ff7800;">⚓ Pelabuhan ${port.name}</h6>
+                                        <p class="mb-0 small">Kode Pelabuhan: <b>${port.port_code || '-'}</b></p>
+                                        <p class="mb-0 small">Kode Negara: <b>${port.country_code || '-'}</b></p>
+                                    </div>
+                                `);
+                            }
+                        });
                     }
-                    
-                    createOrUpdateMarker({
-                        id: countryId,
-                        name: countryName,
-                        latitude: lat,
-                        longitude: lng
-                    }, result.results.risk_level);
-                }
-            })
-            .catch(error => {
-                console.error('Error detail:', error);
-                alert('Gagal memproses kalkulasi AI. Pastikan server MAMP MySQL Anda sedang menyala hijau aktif.');
-            });
-        });
+                })
+                .catch(error => console.error('Error detail load ports:', error));
+        }
+
+        // 3. Jalankan fungsi load ports
+        loadPorts();
     </script>
 </body>
 </html>
