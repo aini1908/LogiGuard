@@ -270,13 +270,19 @@ document.getElementById('riskForm').addEventListener('submit', function(e) {
 
                     // 4. Detik ini juga, ubah warna pin marker di peta secara langsung!
                     const selectEl = document.getElementById('countrySelect');
-                    const countryName = selectEl.options[selectEl.selectedIndex].text.split(' (')[0];
+                    const countryName = selectEl.options[selectEl.selectedIndex].text;
+                    let lat = 0;
+                    let lng = 0;
+                    if (markerLayers[countryId]) {
+                        lat = markerLayers[countryId].getLatLng().lat;
+                        lng = marlerLayers[countryId].getLatLng().lng;
+                    }
                     
                     createOrUpdateMarker({
                         id: countryId,
                         name: countryName,
-                        latitude: markerLayers[countryId].getLatLng().lat,
-                        longitude: markerLayers[countryId].getLatLng().lng
+                        latitude: lat,
+                        longitude: lng
                     }, result.results.risk_level);
                 }
             })
