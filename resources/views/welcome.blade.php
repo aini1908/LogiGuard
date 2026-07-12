@@ -416,6 +416,14 @@
                             latitude: currentLatLng.lat,
                             longitude: currentLatLng.lng
                         }, result.results.risk_level, weatherData);
+
+                        map.setView([currentLatLng.lat, currentLatLng.lng], 5, {
+                            animate: true,
+                            duration: 1.5
+                        });
+                        
+                        // Balon teks popup langsung otomatis terbuka tanpa perlu diklik manual
+                        markerLayers[countryId].openPopup();
                     }
                 }
             })
