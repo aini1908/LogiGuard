@@ -2,8 +2,6 @@
 
 @section('title', 'Shipping & Risk Core')
 
-@section('title', 'Freight Cost Matrix')
-
 @section('styles')
     <style>
         .hanya-saat-print { display: none; }
@@ -23,7 +21,6 @@
             .hanya-saat-print * { color: #000000 !important; }
         }
         
-        /* 🔥 FIX SAFARI FORM STYLE: Menghilangkan paksa style abu-abu tebal jadul select Safari */
         select, input {
             appearance: none;
             -webkit-appearance: none;
@@ -38,16 +35,17 @@
 @endsection
 
 @section('content')
-    <!-- Main Form Card (Judul dipindah ke global header luar) -->
+    <!-- Main Form Card -->
     <div class="w-full bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm transition-all duration-300">
         
-        <!-- 🔥 DESAIN BARU: Form Input Minimalis & Modis Terstandarisasi -->
+        <!-- Form Input Minimalis & Modis Terstandarisasi -->
         <form id="calcForm" class="space-y-6 no-print">
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                     <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Pelabuhan Asal (Origin)</label>
-                    <select name="origin_port" required class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-medium shadow-inner">
+                    <!-- 🏢 Diberi ID id="originPortSelect" agar mudah ditangkap oleh script JavaScript -->
+                    <select id="originPortSelect" name="origin_port" required class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-medium shadow-inner">
                         @foreach($ports as $port)
                             <option value="{{ $port->id }}">{{ $port->port_name }} ({{ $port->country_code }})</option>
                         @endforeach
@@ -165,6 +163,34 @@
 
 @section('scripts')
     <script>
+        // 🌟 DI SINI LOGIKA BARU PENANGKAP OTOMATIS DARI LOKASI PELABUHAN 
+        document.addEventListener("DOMContentLoaded", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const originPortName = urlParams.get('origin_port');
+
+            if (originPortName) {
+                const originSelect = document.getElementById('originPortSelect');
+                if (originSelect) {
+                    // Loop opsi dropdown untuk mencocokkan teks pelabuhan asal
+                    for (let i = 0; i < originSelect.options.length; i++) {
+                        if (originSelect.options[i].text.toLowerCase().includes(decodeURIComponent(originPortName).toLowerCase())) {
+                            originSelect.selectedIndex = i;
+                            
+                            // Transformasi UI: Berikan background abu-abu premium pertanda terkunci aman
+                            originSelect.classList.add('bg-slate-100', 'text-slate-500', 'cursor-not-allowed');
+                            
+                            // Kunci opsi lain agar fokus ke pemilihan tujuan saja
+                            originSelect.addEventListener('change', function(e) {
+                                originSelect.selectedIndex = i;
+                            });
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+
+        // Logika Submit Form Bawaan AJAX Anda
         document.getElementById('calcForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);

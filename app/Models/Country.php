@@ -12,10 +12,13 @@ class Country extends Model
     protected $table = 'countries';
     protected $fillable = [
         'country_code',
+        'iso_code', // Mendaftarkan kolom ini agar bisa diisi otomatis oleh API
         'name',
         'currency_code',
         'region',
         'latitude',
-        'longitude'
+        'longitude',
+        'inflation_rate', // Daftarkan juga kolom ini untuk menampung data World Bank
+        'gdp_nominal'     // Daftarkan juga kolom ini untuk menampung data World Bank
     ];
 }

@@ -15,3 +15,4 @@ Route::get('/countries', [CountryController::class, 'index']);
 Route::post('/risk/analyze', [RiskAssesmentController::class, 'analyze']);
 Route::get('/ports', [PortController::class, 'index']);
 Route::get('/countries/{code}/detail', [CountryDashboardController::class, 'getDetail']);
+Route::post('/api/analyze-sentiment', [CountryDashboardController::class, 'analyzeSentiment']);
