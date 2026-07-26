@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
-class FetchGlobalPortsCommand extends Command
+class FetchGlobalCountriesCommand extends Command
 {
     protected $signature = 'ports:fetch';
     protected $description = 'Menyedot ribuan data pelabuhan maritim di seluruh dunia secara otomatis dari OpenStreetMap API';
