@@ -41,11 +41,25 @@ class CountrySeeder extends Seeder
         }
 
         foreach ($countries as $c) {
+            // Ambil nama negara (baik jika berbentuk string maupun array/object)
+            $rawName = $c['name'] ?? ($c['country_name'] ?? 'Unknown');
+            if (is_array($rawName)) {
+                $name = $rawName['common'] ?? ($rawName['official'] ?? reset($rawName));
+            } else {
+                $name = (string) $rawName;
+            }
+
+            // Ambil kode negara
+            $code = $c['country_code'] ?? ($c['code'] ?? ($c['cca2'] ?? 'GL'));
+            if (is_array($code)) {
+                $code = reset($code);
+            }
+
             DB::table('countries')->insert([
-                'country_code'   => $c['country_code'] ?? ($c['code'] ?? 'GL'),
-                'name'           => $c['country_name'] ?? ($c['name'] ?? 'Unknown'), // Menggunakan 'name'
-                'latitude'       => (float) ($c['latitude'] ?? ($c['lat'] ?? 0)),
-                'longitude'      => (float) ($c['longitude'] ?? ($c['lng'] ?? 0)),
+                'country_code'   => substr(strtoupper((string)$code), 0, 10),
+                'name'           => substr((string)$name, 0, 255),
+                'latitude'       => (float) ($c['latitude'] ?? ($c['lat'] ?? ($c['latlng'][0] ?? 0))),
+                'longitude'      => (float) ($c['longitude'] ?? ($c['lng'] ?? ($c['latlng'][1] ?? 0))),
                 'inflation_rate' => (float) ($c['inflation_rate'] ?? ($c['inflation'] ?? 0)),
                 'created_at'     => now(),
                 'updated_at'     => now(),
