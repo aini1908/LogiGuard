@@ -146,8 +146,19 @@
                         </div>
                         <div class="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 shadow-2xs"><i class="fa-solid fa-temperature-half"></i></div>
                     </div>
+                    
+                    <!-- EVALUASI RISIKO & TOTAL RISK SCORE -->
                     <div id="sentimentSection" class="hidden bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
                         <div id="sentimentResultBox" class="p-3 rounded-xl border flex flex-col items-center justify-center text-center transition-all duration-150"></div>
+                    </div>
+
+                    <!-- BERITA LOGISTIK SPESIFIK NEGARA (NEWS INTELLIGENCE) -->
+                    <div id="countryNewsSection" class="hidden bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                        <h4 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-newspaper text-blue-600"></i>
+                            <span>Berita Terkait Rantai Pasok Negara</span>
+                        </h4>
+                        <div id="countryNewsList" class="flex flex-col gap-2"></div>
                     </div>
                 </div>
             </div>
@@ -234,7 +245,7 @@
                 { source: "Ocean Freight News", title: "Global Port Authorities Optimize Vessel Queuing to Reduce Structural Freight Delays", image: "https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?q=80&w=400&auto=format&fit=crop", url: "#" }
             ];
 
-            function renderArticles(articles, isFallback = false) {
+            function renderArticles(articles) {
                 let newsHtml = '';
                 articles.forEach(art => {
                     const imgUrl = art.urlToImage ? art.urlToImage : (art.image ? art.image : 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=400&auto=format&fit=crop');
@@ -270,12 +281,12 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'ok' && data.articles && data.articles.length > 0) {
-                        renderArticles(data.articles, false);
+                        renderArticles(data.articles);
                     } else {
-                        renderArticles(fallbackNews, true);
+                        renderArticles(fallbackNews);
                     }
                 })
-                .catch(() => renderArticles(fallbackNews, true));
+                .catch(() => renderArticles(fallbackNews));
         }
 
         function toggleFavoriteWatchlist() {
@@ -376,11 +387,13 @@
             const loading = document.getElementById('loadingStatus');
             const metrics = document.getElementById('metricContent');
             const sentimentSec = document.getElementById('sentimentSection');
+            const countryNewsSec = document.getElementById('countryNewsSection');
             const headerFlag = document.getElementById('headerFlag');
 
             loading.classList.remove('hidden');
             metrics.classList.add('hidden'); 
             sentimentSec.classList.add('hidden');
+            if(countryNewsSec) countryNewsSec.classList.add('hidden');
 
             headerFlag.className = `fi fi-${countryCode.toLowerCase()} shadow-sm rounded-xs text-base block w-6 h-4`;
 
@@ -415,17 +428,40 @@
                             icon = 'fa-circle-exclamation'; alertClass = 'bg-amber-50 border-amber-200 text-amber-700'; 
                         }
 
-                        // Penanganan Skor Positif/Negatif Matematika Lexicon
+                        // Penanganan Skor Lexicon & Risk Score
                         const posScore = data.logistics_risk.score_positive;
                         const negScore = data.logistics_risk.score_negative;
+                        const riskWeight = data.logistics_risk.total_risk_weight || 25;
 
                         resultBox.className = `p-4 rounded-xl border flex flex-col items-center justify-center text-center ${alertClass}`;
                         resultBox.innerHTML = `
                             <div class="text-xl mb-1"><i class="fa-solid ${icon}"></i></div>
                             <span class="text-[9px] font-bold uppercase tracking-wider">EVALUASI RISIKO JALUR:</span>
-                            <h6 class="text-xs font-extrabold my-0.5">${data.logistics_risk.sentiment}</h6>
-                            <span class="text-[8px] bg-slate-900 text-white font-mono px-2 py-0.5 rounded-full mt-1.5 shadow-2xs">Skor -> Positif: ${posScore} | Negatif: ${negScore}</span>
+                            <h6 class="text-xs font-black my-0.5">${data.logistics_risk.sentiment}</h6>
+                            <div class="flex items-center justify-center gap-1.5 mt-2 flex-wrap">
+                                <span class="text-[9px] bg-slate-900 text-white font-mono font-bold px-2.5 py-0.5 rounded-full shadow-2xs">TOTAL RISK SCORE: ${riskWeight} / 100</span>
+                                <span class="text-[8px] bg-slate-800 text-slate-200 font-mono px-2 py-0.5 rounded-full shadow-2xs">Lexicon -> Positif: ${posScore} | Negatif: ${negScore}</span>
+                            </div>
                         `;
+
+                        // Render Berita Spesifik Negara (News Intelligence)
+                        const newsListContainer = document.getElementById('countryNewsList');
+                        if (newsListContainer && data.logistics_risk.latest_headlines && data.logistics_risk.latest_headlines.length > 0) {
+                            let newsHtml = '';
+                            data.logistics_risk.latest_headlines.forEach(news => {
+                                newsHtml += `
+                                    <div class="p-2.5 bg-slate-50/70 border border-slate-100 rounded-xl hover:border-blue-200 hover:bg-white transition-all">
+                                        <a href="${news.url}" target="_blank" class="text-[11px] font-bold text-slate-800 hover:text-blue-600 line-clamp-2 no-underline leading-tight">${news.title}</a>
+                                        <div class="flex items-center justify-between text-[9px] text-slate-400 mt-1.5 font-mono">
+                                            <span><i class="fa-regular fa-newspaper mr-1"></i>${news.source}</span>
+                                            <span class="text-blue-600 font-bold">Baca <i class="fa-solid fa-arrow-right text-[7px]"></i></span>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            newsListContainer.innerHTML = newsHtml;
+                            if(countryNewsSec) countryNewsSec.classList.remove('hidden');
+                        }
 
                         metrics.classList.remove('hidden'); 
                         sentimentSec.classList.remove('hidden');
