@@ -65,9 +65,9 @@ class FetchGlobalCountriesCommand extends Command
                 $lat = $element['lat'] ?? null;
                 $lng = $element['lon'] ?? null;
                 
-                // Ekstrak kode negara secara kasar dari tag, atau default ke 'GL' (Global) jika tidak ada
+                // Ekstrak kode & nama negara (default ke GL / Global)
                 $countryCode = isset($tags['addr:country']) ? substr(strtoupper($tags['addr:country']), 0, 2) : 'GL';
-                $portCode = 'PRT' . ($element['id'] ?? $insertedCount);
+                $countryName = $tags['addr:country'] ?? 'Global';
 
                 if ($name && $lat !== null && $lng !== null) {
                     DB::table('ports')->insert([
