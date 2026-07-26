@@ -41,7 +41,7 @@ class CountrySeeder extends Seeder
         }
 
         foreach ($countries as $c) {
-            // Ambil nama negara (baik jika berbentuk string maupun array/object)
+            // Parsing Nama Negara (String / Array)
             $rawName = $c['name'] ?? ($c['country_name'] ?? 'Unknown');
             if (is_array($rawName)) {
                 $name = $rawName['common'] ?? ($rawName['official'] ?? reset($rawName));
@@ -49,14 +49,16 @@ class CountrySeeder extends Seeder
                 $name = (string) $rawName;
             }
 
-            // Ambil kode negara
-            $code = $c['country_code'] ?? ($c['code'] ?? ($c['cca2'] ?? 'GL'));
+            // Parsing Kode Negara & ISO Code
+            $code = $c['iso_code'] ?? ($c['country_code'] ?? ($c['code'] ?? ($c['cca2'] ?? 'GL')));
             if (is_array($code)) {
                 $code = reset($code);
             }
+            $cleanCode = substr(strtoupper((string)$code), 0, 10);
 
             DB::table('countries')->insert([
-                'country_code'   => substr(strtoupper((string)$code), 0, 10),
+                'country_code'   => $cleanCode,
+                'iso_code'       => $cleanCode,
                 'name'           => substr((string)$name, 0, 255),
                 'latitude'       => (float) ($c['latitude'] ?? ($c['lat'] ?? ($c['latlng'][0] ?? 0))),
                 'longitude'      => (float) ($c['longitude'] ?? ($c['lng'] ?? ($c['latlng'][1] ?? 0))),
@@ -65,5 +67,7 @@ class CountrySeeder extends Seeder
                 'updated_at'     => now(),
             ]);
         }
+
+        $this->command->info("Berhasil mengimpor data negara!");
     }
 }
