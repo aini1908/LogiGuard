@@ -71,9 +71,9 @@ class FetchGlobalCountriesCommand extends Command
 
                 if ($name && $lat !== null && $lng !== null) {
                     DB::table('ports')->insert([
-                        'port_code'    => substr($portCode, 0, 10),
-                        'name'         => substr($name, 0, 255),
+                        'port_name'    => substr($name, 0, 255),
                         'country_code' => $countryCode,
+                        'country_name' => substr($countryName, 0, 100),
                         'latitude'     => $lat,
                         'longitude'    => $lng,
                         'created_at'   => now(),
