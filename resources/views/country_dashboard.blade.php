@@ -21,7 +21,7 @@
                 <h1 class="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
                     <span>Global Country Dashboard</span>
                     <span id="headerFlag" class="hidden shadow-xs rounded-sm"></span>
-                    <!-- ✨ TOMBOL FAVORITE WATCHLIST (MEMENUHI FITUR 9) -->
+                    <!-- ✨ TOMBOL FAVORITE WATCHLIST -->
                     <button onclick="toggleFavoriteWatchlist()" id="btnWatchlistStar" class="hidden text-slate-300 hover:text-amber-500 text-sm transition-colors cursor-pointer border-none bg-transparent">
                         <i class="fa-solid fa-star"></i>
                     </button>
@@ -80,7 +80,7 @@
                                         <span class="truncate max-w-[120px]">{{ $risk->name }}</span>
                                     </td>
                                     <td class="px-4 py-2.5 font-mono text-[10px] text-slate-400">{{ $risk->country_code }}</td>
-                                    <td class="px-4 py-2.5 text-right text-rose-600 font-bold">{{ number_format($risk->inflation_rate, 2) }} %</td>
+                                    <td class="px-4 py-2.5 text-right text-rose-600 font-bold">{{ number_format((float)$risk->inflation_rate, 2) }} %</td>
                                 </tr>
                                 @endforeach
                             </tbody>
@@ -89,7 +89,7 @@
                     <span class="text-[9px] text-slate-400 block mt-2 text-center italic">*Diperbarui otomatis via World Bank System Core.</span>
                 </div>
 
-                <!-- ✨ WADAH MODERNISE PEMANTAUAN FAVORITE MONITORING LIST (FITUR 9 SEUTUHNYA) -->
+                <!-- WADAH PEMANTAUAN FAVORITE MONITORING LIST -->
                 <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs relative overflow-hidden">
                     <div class="absolute top-0 left-0 right-0 h-[3px] bg-amber-400"></div>
                     <div class="flex justify-between items-center mb-3">
@@ -99,7 +99,6 @@
                         </h3>
                         <span class="text-[9px] text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded-full font-mono uppercase tracking-wide">Fitur 9</span>
                     </div>
-                    <!-- Tempat render list negara favorit bergaya Card Grid Layout -->
                     <div id="watchlistBadgeContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <div class="col-span-2 py-3 text-center text-[11px] text-slate-400 italic bg-slate-50/50 border border-dashed border-slate-200 rounded-xl">
                             Belum ada negara yang dipantau. Klik bintang pada negara pilihan untuk menambahkan.
@@ -160,7 +159,7 @@
         </div>
     </div>
 
-    <!-- 🌐 ELEMEN WINDOW 2: FITUR HALAMAN KHUSUS BERITA LOGISTIK GLOBAL REAL-TIME (Hidden di Awal) -->
+    <!-- 🌐 ELEMEN WINDOW 2: FITUR HALAMAN KHUSUS BERITA LOGISTIK GLOBAL REAL-TIME -->
     <div id="globalNewsWindow" class="hidden bg-white border border-slate-200 rounded-2xl p-6 shadow-xs mb-12">
         <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
             <div>
@@ -175,7 +174,6 @@
             </button>
         </div>
 
-        <!-- Wadah Grid Berita Real-Time Berkapasitas Besar -->
         <div id="liveNewsFeed" class="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div class="col-span-3 p-12 text-center text-xs text-slate-400 font-semibold italic">
                 <i class="fa-solid fa-circle-notch fa-spin me-2 text-emerald-600 text-sm"></i> Menghubungkan ke satelit News API untuk penarikan manifes berita logistik...
@@ -204,16 +202,14 @@
             }
         });
 
-        // 🚀 LOGIKA SPA NAVIGATION UNTUK PINDAH HALAMAN BERITA SECARA INSTAN
         function switchViewToNews() {
             document.getElementById('coreDashboardWindow').classList.add('hidden');
             document.getElementById('globalNewsWindow').classList.remove('hidden');
             
-            // Ubah gaya tombol navigasi atas agar terlihat aktif
             const btn = document.getElementById('tabBtnNewsGlobal');
             if(btn) btn.className = "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all duration-150 bg-white text-blue-950 shadow-xs";
             
-            fetchLiveMaritimeNews(); // Tarik berita real-time
+            fetchLiveMaritimeNews();
         }
 
         function backToDashboard() {
@@ -226,21 +222,16 @@
             setTimeout(() => { map.invalidateSize(); }, 50);
         }
 
-        // 🔄 FUNGSI UTAMA: Ambil Arus Berita Logistik Terkini 100% Real-Time
         function fetchLiveMaritimeNews() {
             const newsFeed = document.getElementById('liveNewsFeed');
             if(!newsFeed) return;
 
             const globalLogisticsKeywords = encodeURIComponent('(maritime disruption) OR (shipping port logistics krisis) OR (ocean cargo freight)');
             
-            // Backup Data Premium jika sewaktu-waktu kuota habis ditengah jalan
             const fallbackNews = [
                 { source: "Logistics Inside Europe", title: "Port of Sines Expands Container Terminal Capacity to Process Atlantic Cargo Surge", image: "https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=400&auto=format&fit=crop", url: "#" },
                 { source: "Maritime Executive", title: "Global Maritime Hubs Invest €50M in Digitalizing Supply Chain Frameworks", image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=400&auto=format&fit=crop", url: "#" },
-                { source: "Ocean Freight News", title: "Global Port Authorities Optimize Vessel Queuing to Reduce Structural Freight Delays", image: "https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?q=80&w=400&auto=format&fit=crop", url: "#" },
-                { source: "FreightWaves", title: "Container Freight Rates Stabilize as Fleet Authorities Optimize Global Rerouting", image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=400&auto=format&fit=crop", url: "#" },
-                { source: "JOC Maritime", title: "Global Shipping Lanes Face Structural Delays Amid Canal Infrastructure Bottlenecks", image: "https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=400&auto=format&fit=crop", url: "#" },
-                { source: "Port Technology", title: "Advanced Automation Cranes Adopted Across Major International Trading Hubs", image: "https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?q=80&w=400&auto=format&fit=crop", url: "#" }
+                { source: "Ocean Freight News", title: "Global Port Authorities Optimize Vessel Queuing to Reduce Structural Freight Delays", image: "https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?q=80&w=400&auto=format&fit=crop", url: "#" }
             ];
 
             function renderArticles(articles, isFallback = false) {
@@ -248,8 +239,6 @@
                 articles.forEach(art => {
                     const imgUrl = art.urlToImage ? art.urlToImage : (art.image ? art.image : 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=400&auto=format&fit=crop');
                     const sourceName = art.source.name ? art.source.name : (art.source ? art.source : 'Global Logistics');
-                    const targetAttr = isFallback ? '' : 'target="_blank"';
-                    const clickAction = isFallback ? 'onclick="event.preventDefault(); alert(\'Simulasi link berita logistik aktif.\')"' : '';
 
                     newsHtml += `
                         <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-md transition-shadow duration-200">
@@ -262,12 +251,12 @@
                                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                                         <span class="text-[9px] font-black text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded-md">${sourceName}</span>
                                     </div>
-                                    <a href="${art.url}" ${targetAttr} ${clickAction} class="block text-xs font-bold text-slate-900 leading-snug hover:text-blue-600 transition-colors line-clamp-3 mb-4 no-underline">
+                                    <a href="${art.url}" target="_blank" class="block text-xs font-bold text-slate-900 leading-snug hover:text-blue-600 transition-colors line-clamp-3 mb-4 no-underline">
                                         ${art.title}
                                     </a>
                                 </div>
                                 <div class="text-right border-t border-slate-100 pt-3">
-                                    <a href="${art.url}" ${targetAttr} ${clickAction} class="text-[10px] text-blue-600 font-bold hover:underline inline-flex items-center gap-1 no-underline">
+                                    <a href="${art.url}" target="_blank" class="text-[10px] text-blue-600 font-bold hover:underline inline-flex items-center gap-1 no-underline">
                                         Baca Artikel <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
                                     </a>
                                 </div>
@@ -277,7 +266,6 @@
                 newsFeed.innerHTML = newsHtml;
             }
 
-            // Eksekusi API secara live
             fetch(`https://newsapi.org/v2/everything?q=${globalLogisticsKeywords}&language=en&sortBy=publishedAt&pageSize=6&apiKey=4bdf9bd6719842f1b4020b666a0d0a51`)
                 .then(res => res.json())
                 .then(data => {
@@ -287,12 +275,9 @@
                         renderArticles(fallbackNews, true);
                     }
                 })
-                .catch(() => {
-                    renderArticles(fallbackNews, true);
-                });
+                .catch(() => renderArticles(fallbackNews, true));
         }
 
-        // 🌟 FITUR 9: MANAJEMEN FAVORITE MONITORING WATCHLIST MODERN
         function toggleFavoriteWatchlist() {
             const selectEl = document.getElementById('countrySelect');
             const code = selectEl.value;
@@ -309,7 +294,7 @@
 
             localStorage.setItem('lgWatchlist', JSON.stringify(watchlist));
             updateWatchlistStarUI(code);
-            renderWatchlistBadges(); // Perbarui daftar card lencana di layar
+            renderWatchlistBadges();
         }
 
         function updateWatchlistStarUI(code) {
@@ -326,7 +311,6 @@
             }
         }
 
-        // Fungsi mencetak lencana negara favorit bergaya Card Premium
         function renderWatchlistBadges() {
             const container = document.getElementById('watchlistBadgeContainer');
             if(!container) return;
@@ -382,10 +366,9 @@
             }
         }
 
-        // Jalankan cetak badge favorit pertama kali halaman dimuat
         document.addEventListener("DOMContentLoaded", renderWatchlistBadges);
         
-        // Listener dropdown negara biasa
+        // 🚀 LISTENER AJAX UTAMA
         document.getElementById('countrySelect').addEventListener('change', function() {
             const countryCode = this.value; if (!countryCode) return;
 
@@ -401,7 +384,6 @@
 
             headerFlag.className = `fi fi-${countryCode.toLowerCase()} shadow-sm rounded-xs text-base block w-6 h-4`;
 
-            // Perbarui status bintang watchlist favorit sesuai kode negara terpilih
             updateWatchlistStarUI(countryCode);
 
             fetch(`/api/country-details/${countryCode}`)
@@ -410,9 +392,17 @@
                     loading.classList.add('hidden');
                     if (data.status === 'success') {
                         placeholder.classList.add('hidden');
-                        document.getElementById('valGdp').innerText = data.economic.gdp && !isNaN(data.economic.gdp) ? '$' + parseFloat(data.economic.gdp).toLocaleString('id-ID') : data.economic.gdp;
-                        document.getElementById('valPopulation').innerText = data.economic.population && !isNaN(data.economic.population) ? parseInt(data.economic.population).toLocaleString('id-ID') : data.economic.population;
-                        document.getElementById('valInflation').innerText = data.economic.inflation_rate && !isNaN(data.economic.inflation_rate) ? parseFloat(data.economic.inflation_rate).toFixed(2) + ' %' : data.economic.inflation_rate + ' %';
+                        
+                        // GDP
+                        document.getElementById('valGdp').innerText = data.economic.gdp;
+                        
+                        // Populasi
+                        document.getElementById('valPopulation').innerText = data.economic.population;
+                        
+                        // Inflasi
+                        document.getElementById('valInflation').innerText = (isNaN(data.economic.inflation_rate) ? data.economic.inflation_rate : parseFloat(data.economic.inflation_rate).toFixed(2)) + ' %';
+                        
+                        // Cuaca & Angin
                         document.getElementById('valWeather').innerText = data.weather.temperature;
                         document.getElementById('valWind').innerText = `Kecepatan angin eksternal: ${data.weather.windspeed}`;
 
@@ -425,12 +415,16 @@
                             icon = 'fa-circle-exclamation'; alertClass = 'bg-amber-50 border-amber-200 text-amber-700'; 
                         }
 
+                        // Penanganan Skor Positif/Negatif Matematika Lexicon
+                        const posScore = data.logistics_risk.score_positive;
+                        const negScore = data.logistics_risk.score_negative;
+
                         resultBox.className = `p-4 rounded-xl border flex flex-col items-center justify-center text-center ${alertClass}`;
                         resultBox.innerHTML = `
                             <div class="text-xl mb-1"><i class="fa-solid ${icon}"></i></div>
                             <span class="text-[9px] font-bold uppercase tracking-wider">EVALUASI RISIKO JALUR:</span>
                             <h6 class="text-xs font-extrabold my-0.5">${data.logistics_risk.sentiment}</h6>
-                            <span class="text-[8px] bg-slate-900 text-white font-mono px-2 py-0.5 rounded-full mt-1.5 shadow-2xs">Skor -> Positif: ${data.logistics_risk.score_positive} | Negatif: ${data.logistics_risk.score_negative}</span>
+                            <span class="text-[8px] bg-slate-900 text-white font-mono px-2 py-0.5 rounded-full mt-1.5 shadow-2xs">Skor -> Positif: ${posScore} | Negatif: ${negScore}</span>
                         `;
 
                         metrics.classList.remove('hidden'); 
@@ -444,6 +438,10 @@
                             }
                         }, 100);
                     }
+                })
+                .catch(err => {
+                    loading.classList.add('hidden');
+                    console.error("Fetch Error:", err);
                 });
         });
     </script>
