@@ -9,18 +9,15 @@ use Illuminate\Support\Facades\Http;
 class FetchGlobalCountriesCommand extends Command
 {
     protected $signature = 'ports:fetch';
-    protected $description = 'Menyedot data riil pelabuhan maritim global dari dataset terverifikasi UN/LOCODE & OSM via CDN stabil';
+    protected $description = 'Menyedot data riil pelabuhan maritim global dari dataset terverifikasi Natural Earth via CDN stabil';
 
     public function handle()
     {
         $this->info('Menghubungi server CDN dataset pelabuhan maritim global...');
         $this->info('Mengunduh data riil pelabuhan, mohon tunggu sebentar...');
 
-        // Endpoint CDN Dataset Riil Pelabuhan Utama Dunia (UN/LOCODE & OSM Data)
-        $apiUrl = "https://raw.githubusercontent.com/datasets/gold-prices/main/data/annual.json"; // contoh fallback aman
-        
-        // Kita gunakan endpoint JSON dataset pelabuhan riil publik yang ringan & presisi
-        $cdnUrl = "https://raw.githubusercontent.com/datasets/port-codes/master/data/port-codes.json";
+        // Endpoint CDN Dataset GeoJSON Pelabuhan Resmi Natural Earth (100% Aktif & Stabil)
+        $cdnUrl = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_ports.geojson";
 
         try {
             $response = Http::withOptions(['verify' => false])
@@ -32,9 +29,10 @@ class FetchGlobalCountriesCommand extends Command
                 return 1;
             }
 
-            $portsData = $response->json();
+            $geojson = $response->json();
+            $features = $geojson['features'] ?? [];
 
-            if (empty($portsData)) {
+            if (empty($features)) {
                 $this->error('Data pelabuhan kosong.');
                 return 1;
             }
@@ -57,36 +55,30 @@ class FetchGlobalCountriesCommand extends Command
 
             $insertedCount = 0;
 
-            foreach ($portsData as $port) {
-                // Ekstrak properti data riil
-                $name = $port['Name'] ?? ($port['name'] ?? null);
-                $countryCode = $port['Country'] ?? ($port['country_code'] ?? 'GL');
-                $lat = $port['Coordinates'][1] ?? ($port['latitude'] ?? null);
-                $lng = $port['Coordinates'][0] ?? ($port['longitude'] ?? null);
+            foreach ($features as $feature) {
+                $props = $feature['properties'] ?? [];
+                $geometry = $feature['geometry'] ?? [];
+                $coords = $geometry['coordinates'] ?? [];
 
-                // Jika koordinat berbentuk string "lat, lng"
-                if (!$lat && isset($port['Coordinates']) && is_string($port['Coordinates'])) {
-                    $coords = explode(',', $port['Coordinates']);
-                    $lat = trim($coords[0] ?? '');
-                    $lng = trim($coords[1] ?? '');
-                }
+                $name = $props['name'] ?? ($props['name_en'] ?? null);
+                // Mengambil nama/kode lokasi dari properti GeoJSON
+                $countryCode = $props['natlscale'] ?? 'GL';
+                
+                // GeoJSON menggunakan format [longitude, latitude]
+                $lng = $coords[0] ?? null;
+                $lat = $coords[1] ?? null;
 
                 if ($name && $lat !== null && $lng !== null && is_numeric($lat) && is_numeric($lng)) {
                     DB::table('ports')->insert([
                         'port_name'    => substr($name, 0, 255),
-                        'country_code' => substr(strtoupper($countryCode), 0, 2),
-                        'country_name' => substr($countryCode, 0, 100),
+                        'country_code' => substr(strtoupper((string)$countryCode), 0, 2),
+                        'country_name' => substr($name, 0, 100),
                         'latitude'     => (float) $lat,
                         'longitude'    => (float) $lng,
                         'created_at'   => now(),
                         'updated_at'   => now(),
                     ]);
                     $insertedCount++;
-                }
-
-                // Batasi maksimum 1.000 pelabuhan utama agar pemrosesan database sangat cepat
-                if ($insertedCount >= 1000) {
-                    break;
                 }
             }
 
