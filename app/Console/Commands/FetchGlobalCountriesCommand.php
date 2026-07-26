@@ -17,7 +17,7 @@ class FetchGlobalCountriesCommand extends Command
         $this->info('Proses ini mengunduh ribuan data pelabuhan seluruh dunia, mohon tunggu sebentar...');
 
         // Query Overpass untuk menarik semua objek yang ditandai sebagai pelabuhan komersial/logistik
-        $query = '[out:json][timeout:60];node["industrial"="port"];out body 1000;';
+        $query = '[out:json][timeout:90];node["harbour"];out body 1000;';
         $apiUrl = "https://overpass.kumi.systems/api/interpreter?data=" . urlencode($query);
 
         try {
