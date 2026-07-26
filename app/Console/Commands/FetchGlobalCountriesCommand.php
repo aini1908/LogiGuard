@@ -16,9 +16,9 @@ class FetchGlobalCountriesCommand extends Command
         $this->info('Menghubungi server global Overpass API (OpenStreetMap)...');
         $this->info('Proses ini mengunduh ribuan data pelabuhan seluruh dunia, mohon tunggu sebentar...');
 
-        // Query Overpass untuk menarik semua objek yang ditandai sebagai pelabuhan komersial/logistik
-        $query = '[out:json][timeout:90];node["harbour"];out body 1000;';
-        $apiUrl = "https://overpass.kumi.systems/api/interpreter?data=" . urlencode($query);
+        // Ambil pelabuhan komersial & kontainer utama global dari Overpass API (Real-Time)
+        $query = '[out:json][timeout:25];node["harbour"="yes"]["industrial"="port"];out body 300;';
+        $apiUrl = "https://overpass-api.de/api/interpreter?data=" . urlencode($query);
 
         try {
             $response = Http::withOptions(['verify' => false])
