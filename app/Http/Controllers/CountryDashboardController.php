@@ -17,7 +17,7 @@ class CountryDashboardController extends Controller
             ->select(
                 'countries.name', 
                 'countries.country_code', 
-                DB::raw('COALESCE(economic_indicators.inflation_rate, countries.inflation_rate, 2.84) as inflation_rate')
+                DB::raw('COALESCE(economic_indicators.inflation_rate, countries.inflation_rate, 0.00) as inflation_rate')
             )
             ->orderBy('inflation_rate', 'desc')
             ->take(5)
@@ -31,63 +31,59 @@ class CountryDashboardController extends Controller
         try {
             $code = strtoupper($code);
             
+            // 1. Data Profil Negara dari Database
             $country = DB::table('countries')->where('country_code', $code)->first();
             if (!$country) {
                 return response()->json(['status' => 'error', 'message' => 'Negara tidak ditemukan']);
             }
 
-            // 1. Ambil data indikator dari tabel economic_indicators lokal dulu
+            // 2. Data Indikator Ekonomi (Database & Live World Bank API Sync)
             $economic = DB::table('economic_indicators')
                           ->where('country_code', $code)
                           ->orderBy('year', 'desc')
                           ->first();
 
-            $gdpValue = $economic->gdp ?? null;
-            $inflationValue = $economic->inflation_rate ?? null;
-            $populationValue = $economic->population ?? null;
+            $gdpRaw = $economic->gdp ?? ($country->gdp ?? null);
+            $inflationRaw = $economic->inflation_rate ?? ($country->inflation_rate ?? null);
+            $popRaw = $economic->population ?? ($country->population ?? null);
 
-            // 2. Jika data lokal kosong, coba ambil LIVE DATA dari API World Bank Resmi
-            if (!$gdpValue || !$inflationValue) {
+            // Jika lokal null, coba sync dengan World Bank API
+            if (!$gdpRaw || !$inflationRaw || !$popRaw) {
                 try {
-                    // Fetch GDP dari World Bank API
+                    // GDP API
                     $wbGdp = Http::withoutVerifying()->timeout(3)
                         ->get("https://api.worldbank.org/v2/country/{$code}/indicator/NY.GDP.MKTP.CD?format=json&mrnev=1")
                         ->json();
                     if (isset($wbGdp[1][0]['value'])) {
-                        $val = $wbGdp[1][0]['value'];
-                        $gdpValue = '$' . number_format($val / 1000000000, 2) . ' Miliar USD';
+                        $gdpRaw = $wbGdp[1][0]['value'];
                     }
 
-                    // Fetch Inflation dari World Bank API
+                    // Inflation API
                     $wbInf = Http::withoutVerifying()->timeout(3)
                         ->get("https://api.worldbank.org/v2/country/{$code}/indicator/FP.CPI.TOTL.ZG?format=json&mrnev=1")
                         ->json();
                     if (isset($wbInf[1][0]['value'])) {
-                        $inflationValue = round($wbInf[1][0]['value'], 2);
+                        $inflationRaw = round($wbInf[1][0]['value'], 2);
                     }
 
-                    // Fetch Population dari World Bank API
+                    // Population API
                     $wbPop = Http::withoutVerifying()->timeout(3)
                         ->get("https://api.worldbank.org/v2/country/{$code}/indicator/SP.POP.TOTL?format=json&mrnev=1")
                         ->json();
                     if (isset($wbPop[1][0]['value'])) {
-                        $valPop = $wbPop[1][0]['value'];
-                        $populationValue = number_format($valPop / 1000000, 1) . ' Juta Jiwa';
+                        $popRaw = $wbPop[1][0]['value'];
                     }
                 } catch (\Exception $e) {
-                    // Fail silently jika API timeout
+                    // Fallback aman
                 }
             }
 
-            // Fallback Angka Riil Statis Makroekonomi jika World Bank API gagal
-            $gdpValue = $gdpValue ?? ($country->gdp ?? '$1.37 Triliun USD');
-            $inflationValue = $inflationValue ?? ($country->inflation_rate ?? 2.84);
-            $populationValue = $populationValue ?? ($country->population ?? '273.8 Juta Jiwa');
+            // Format murni numerik (Tanpa teks tambahan "Miliar" atau "Jiwa")
+            $gdpFormatted = $gdpRaw ? '$' . number_format((float)$gdpRaw, 0, '.', ',') : 'No Data';
+            $inflationFormatted = $inflationRaw !== null ? (float)$inflationRaw : 0.00; // Murni angka float
+            $popFormatted = $popRaw ? number_format((float)$popRaw, 0, '.', ',') : 'No Data';
 
-            // Format bersih tanpa double %
-            $formattedInflation = is_numeric($inflationValue) ? number_format((float)$inflationValue, 2) : $inflationValue;
-
-            // 3. WEATHER: Open-Meteo API
+            // 3. WEATHER DATA (Open-Meteo API)
             $lat = $country->latitude ?? 0.0;
             $lng = $country->longitude ?? 0.0;
             $weatherUrl = "https://api.open-meteo.com/v1/forecast?latitude={$lat}&longitude={$lng}&current_weather=true";
@@ -107,7 +103,7 @@ class CountryDashboardController extends Controller
                 $currentWeather = $weatherData['current_weather'] ?? null;
             } catch (\Exception $e) {}
 
-            // 4. NEWS: GNews API
+            // 4. NEWS INTELLIGENCE (GNews API)
             $countryName = $country->name;
             $gnewsApiKey = '53cbec3786d43698989b18fc93afbaf0'; 
             $queryStr = urlencode('"' . $countryName . '" AND ("supply chain" OR logistics OR "shipping crisis" OR port)');
@@ -145,7 +141,7 @@ class CountryDashboardController extends Controller
             }
             $fullNewsText = strtolower($fullNewsText);
 
-            // 5. KALKULASI SENTIMEN
+            // 5. LEXICON-BASED SENTIMENT ANALYSIS (Aturan Spesifikasi Project)
             $positiveWords = DB::table('positive_words')->pluck('word')->toArray();
             $negativeWords = DB::table('negative_words')->pluck('word')->toArray();
 
@@ -155,11 +151,15 @@ class CountryDashboardController extends Controller
             if (!empty(trim($fullNewsText))) {
                 foreach ($positiveWords as $word) {
                     $cleanWord = trim(strtolower($word));
-                    if (!empty($cleanWord) && stripos($fullNewsText, $cleanWord) !== false) { $positiveCount++; }
+                    if (!empty($cleanWord) && stripos($fullNewsText, $cleanWord) !== false) { 
+                        $positiveCount++; 
+                    }
                 }
                 foreach ($negativeWords as $word) {
                     $cleanWord = trim(strtolower($word));
-                    if (!empty($cleanWord) && stripos($fullNewsText, $cleanWord) !== false) { $negativeCount++; }
+                    if (!empty($cleanWord) && stripos($fullNewsText, $cleanWord) !== false) { 
+                        $negativeCount++; 
+                    }
                 }
             }
 
@@ -167,12 +167,13 @@ class CountryDashboardController extends Controller
             $posPercent = $totalTokens > 0 ? round(($positiveCount / $totalTokens) * 100) : 0;
             $negPercent = $totalTokens > 0 ? round(($negativeCount / $totalTokens) * 100) : 0;
 
-            // WEIGHTED RISK MODEL
+            // 6. WEIGHTED RISK MODEL ALGORITHM (Spesifikasi Project PDF)
+            // Weather Risk (30%) + Inflation Risk (20%) + News Risk (40%) + Currency Risk (10%)
             $temp = $currentWeather ? (float)$currentWeather['temperature'] : 24.0;
             $wind = $currentWeather ? (float)$currentWeather['windspeed'] : 12.0;
             
             $subWeatherRisk = ($temp > 38 || $temp < 0 || $wind > 40) ? 30 : (($temp > 32 || $wind > 25) ? 15 : 5);
-            $inflationRateNum = (float)$formattedInflation;
+            $inflationRateNum = (float)$inflationFormatted;
             $subInflationRisk = ($inflationRateNum > 8.0) ? 20 : (($inflationRateNum > 4.0) ? 10 : 3);
             $subNewsRisk = ($negativeCount > $positiveCount * 1.5) ? 40 : (($negativeCount > $positiveCount) ? 25 : 8);
             $subCurrencyRisk = ($inflationRateNum > 6.0) ? 10 : 4;
@@ -194,9 +195,9 @@ class CountryDashboardController extends Controller
                 'status' => 'success',
                 'country' => $country,
                 'economic' => [
-                    'gdp' => $gdpValue,
-                    'inflation_rate' => $formattedInflation,
-                    'population' => $populationValue
+                    'gdp' => $gdpFormatted,
+                    'inflation_rate' => $inflationFormatted, // Mengirimkan float numerik murni
+                    'population' => $popFormatted
                 ],
                 'weather' => [
                     'temperature' => $currentWeather ? ($currentWeather['temperature'] . ' °C') : '24.5 °C',
@@ -212,51 +213,6 @@ class CountryDashboardController extends Controller
                 ]
             ]);
 
-        } catch (\Exception $e) {
-            return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
-        }
-    }
-
-    public function analyzeSentiment(Request $request)
-    {
-        try {
-            $text = strtolower($request->input('text', ''));
-            if (empty(trim($text))) {
-                return response()->json(['status' => 'error', 'message' => 'Teks berita tidak boleh kosong!']);
-            }
-
-            $positiveWords = DB::table('positive_words')->pluck('word')->toArray();
-            $negativeWords = DB::table('negative_words')->pluck('word')->toArray();
-
-            $positiveCount = 0;
-            $negativeCount = 0;
-            $matchedPositive = [];
-            $matchedNegative = [];
-
-            foreach ($positiveWords as $word) {
-                if (str_contains($text, strtolower($word))) {
-                    $positiveCount++;
-                    $matchedPositive[] = $word;
-                }
-            }
-
-            foreach ($negativeWords as $word) {
-                if (str_contains($text, strtolower($word))) {
-                    $negativeCount++;
-                    $matchedNegative[] = $word;
-                }
-            }
-
-            $sentiment = ($positiveCount > $negativeCount) ? 'POSITIF (Jalur Aman & Stabil)' : (($negativeCount > $positiveCount) ? 'NEGATIF (Jalur Berisiko / Delay)' : 'NETRAL (Kondisi Normal)');
-            $color = ($positiveCount > $negativeCount) ? 'green' : (($negativeCount > $positiveCount) ? 'red' : 'orange');
-
-            return response()->json([
-                'status' => 'success',
-                'sentiment' => $sentiment,
-                'color' => $color,
-                'score' => ['positive' => $positiveCount, 'negative' => $negativeCount],
-                'words_found' => ['positive' => $matchedPositive, 'negative' => $matchedNegative]
-            ]);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
         }
