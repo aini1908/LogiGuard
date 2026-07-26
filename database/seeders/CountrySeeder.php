@@ -43,7 +43,7 @@ class CountrySeeder extends Seeder
         foreach ($countries as $c) {
             DB::table('countries')->insert([
                 'country_code'   => $c['country_code'] ?? ($c['code'] ?? 'GL'),
-                'country_name'   => $c['country_name'] ?? ($c['name'] ?? 'Unknown'),
+                'name'           => $c['country_name'] ?? ($c['name'] ?? 'Unknown'), // Menggunakan 'name'
                 'latitude'       => (float) ($c['latitude'] ?? ($c['lat'] ?? 0)),
                 'longitude'      => (float) ($c['longitude'] ?? ($c['lng'] ?? 0)),
                 'inflation_rate' => (float) ($c['inflation_rate'] ?? ($c['inflation'] ?? 0)),
