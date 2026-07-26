@@ -146,13 +146,13 @@ class CountryDashboardController extends Controller
                     [
                         'title' => "Global Trade & Maritime Operations Report for {$countryName}",
                         'source' => 'Global Logistics Monitor',
-                        'url' => '#',
+                        'url' => "https://news.google.com/search?q=" . urlencode($countryName . " logistics supply chain"),
                         'image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=400&auto=format&fit=crop'
                     ],
                     [
                         'title' => "Port Freight Flow & Supply Chain Resilience Update: {$countryName}",
                         'source' => 'World Shipping News',
-                        'url' => '#',
+                        'url' => "https://www.maritime-executive.com/",
                         'image' => 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=400&auto=format&fit=crop'
                     ]
                 ];
