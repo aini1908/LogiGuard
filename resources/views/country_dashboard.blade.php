@@ -237,56 +237,56 @@
             const newsFeed = document.getElementById('liveNewsFeed');
             if(!newsFeed) return;
 
-            const globalLogisticsKeywords = encodeURIComponent('(maritime disruption) OR (shipping port logistics krisis) OR (ocean cargo freight)');
-            
-            const fallbackNews = [
-                { source: "Logistics Inside Europe", title: "Port of Sines Expands Container Terminal Capacity to Process Atlantic Cargo Surge", image: "https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=400&auto=format&fit=crop", url: "#" },
-                { source: "Maritime Executive", title: "Global Maritime Hubs Invest €50M in Digitalizing Supply Chain Frameworks", image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=400&auto=format&fit=crop", url: "#" },
-                { source: "Ocean Freight News", title: "Global Port Authorities Optimize Vessel Queuing to Reduce Structural Freight Delays", image: "https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?q=80&w=400&auto=format&fit=crop", url: "#" }
-            ];
+            newsFeed.innerHTML = `
+                <div class="col-span-3 p-12 text-center text-xs text-slate-400 font-semibold italic">
+                    <i class="fa-solid fa-circle-notch fa-spin me-2 text-emerald-600 text-sm"></i> Mengambil kabar kargo maritim real-time via Google News Feed...
+                </div>`;
 
-            function renderArticles(articles) {
-                let newsHtml = '';
-                articles.forEach(art => {
-                    const imgUrl = art.urlToImage ? art.urlToImage : (art.image ? art.image : 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=400&auto=format&fit=crop');
-                    const sourceName = art.source.name ? art.source.name : (art.source ? art.source : 'Global Logistics');
+            const liveRssUrl = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent("https://news.google.com/rss/search?q=maritime+shipping+port+logistics+cargo&hl=en-US&gl=US&ceid=US:en");
 
-                    newsHtml += `
-                        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-md transition-shadow duration-200">
-                            <div class="h-36 overflow-hidden bg-slate-100">
-                                <img src="${imgUrl}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=400&auto=format&fit=crop';">
-                            </div>
-                            <div class="p-4 flex flex-col justify-between flex-1">
-                                <div>
-                                    <div class="flex items-center gap-2 mb-2">
-                                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                        <span class="text-[9px] font-black text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded-md">${sourceName}</span>
-                                    </div>
-                                    <a href="${art.url}" target="_blank" class="block text-xs font-bold text-slate-900 leading-snug hover:text-blue-600 transition-colors line-clamp-3 mb-4 no-underline">
-                                        ${art.title}
-                                    </a>
-                                </div>
-                                <div class="text-right border-t border-slate-100 pt-3">
-                                    <a href="${art.url}" target="_blank" class="text-[10px] text-blue-600 font-bold hover:underline inline-flex items-center gap-1 no-underline">
-                                        Baca Artikel <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>`;
-                });
-                newsFeed.innerHTML = newsHtml;
-            }
-
-            fetch(`https://newsapi.org/v2/everything?q=${globalLogisticsKeywords}&language=en&sortBy=publishedAt&pageSize=6&apiKey=4bdf9bd6719842f1b4020b666a0d0a51`)
+            fetch(liveRssUrl)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.status === 'ok' && data.articles && data.articles.length > 0) {
-                        renderArticles(data.articles);
-                    } else {
-                        renderArticles(fallbackNews);
+                    if (data.status === 'ok' && data.items && data.items.length > 0) {
+                        let newsHtml = '';
+                        const articles = data.items.slice(0, 6);
+                        
+                        articles.forEach(art => {
+                            const title = art.title;
+                            const link = art.link;
+                            const source = art.author || "Global Maritime News";
+                            const pubDate = art.pubDate ? new Date(art.pubDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Terbaru';
+                            const imgUrl = art.thumbnail ? art.thumbnail : 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=400&auto=format&fit=crop';
+
+                            newsHtml += `
+                                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-md transition-shadow duration-200">
+                                    <div class="h-36 overflow-hidden bg-slate-100">
+                                        <img src="${imgUrl}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=400&auto=format&fit=crop';">
+                                    </div>
+                                    <div class="p-4 flex flex-col justify-between flex-1">
+                                        <div>
+                                            <div class="flex items-center justify-between mb-2">
+                                                <span class="text-[9px] font-black text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded-md">${source}</span>
+                                                <span class="text-[9px] text-slate-400 font-mono">${pubDate}</span>
+                                            </div>
+                                            <a href="${link}" target="_blank" class="block text-xs font-bold text-slate-900 leading-snug hover:text-blue-600 transition-colors line-clamp-3 mb-4 no-underline">
+                                                ${title}
+                                            </a>
+                                        </div>
+                                        <div class="text-right border-t border-slate-100 pt-3">
+                                            <a href="${link}" target="_blank" class="text-[10px] text-blue-600 font-bold hover:underline inline-flex items-center gap-1 no-underline">
+                                                Baca Artikel <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>`;
+                        });
+                        newsFeed.innerHTML = newsHtml;
                     }
                 })
-                .catch(() => renderArticles(fallbackNews));
+                .catch(err => {
+                    console.error("Live News Error:", err);
+                });
         }
 
         function toggleFavoriteWatchlist() {

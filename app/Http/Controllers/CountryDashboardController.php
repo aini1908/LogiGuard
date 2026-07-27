@@ -103,63 +103,71 @@ class CountryDashboardController extends Controller
                 $currentWeather = $weatherData['current_weather'] ?? null;
             } catch (\Exception $e) {}
 
-            // 4. NEWS INTELLIGENCE (GNews API & Fallback Engine)
+            // 4. NEWS INTELLIGENCE (Google News Live RSS Feed - 100% Live & Unlimited)
             $countryName = $country->name;
-            $gnewsApiKey = '53cbec3786d43698989b18fc93afbaf0'; 
-            $queryStr = urlencode('"' . $countryName . '" AND ("supply chain" OR logistics OR "shipping crisis" OR port)');
-            $gnewsUrl = "https://gnews.io/api/v4/search?q={$queryStr}&lang=en&max=6&apikey={$gnewsApiKey}";
-            
-            $articles = [];
+            $encodedQuery = urlencode('"' . $countryName . '" AND (logistics OR "supply chain" OR shipping OR port)');
+            $rssUrl = "https://api.rss2json.com/v1/api.json?rss_url=" . urlencode("https://news.google.com/rss/search?q={$encodedQuery}&hl=en-US&gl=US&ceid=US:en");
+
+            $displayNews = [];
+            $fullNewsText = "";
+
             try {
                 $chNews = curl_init();
-                curl_setopt($chNews, CURLOPT_URL, $gnewsUrl);
+                curl_setopt($chNews, CURLOPT_URL, $rssUrl);
                 curl_setopt($chNews, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($chNews, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($chNews, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($chNews, CURLOPT_TIMEOUT, 4);
+                curl_setopt($chNews, CURLOPT_TIMEOUT, 5);
                 $newsResponse = curl_exec($chNews);
                 curl_close($chNews);
 
                 $newsData = json_decode($newsResponse, true);
-                $articles = isset($newsData['articles']) ? $newsData['articles'] : [];
+
+                if (isset($newsData['items']) && !empty($newsData['items'])) {
+                    $items = array_slice($newsData['items'], 0, 5);
+                    foreach ($items as $item) {
+                        $title = strip_tags($item['title'] ?? 'Headline');
+                        $fullNewsText .= " " . $title;
+
+                        $displayNews[] = [
+                            'title' => $title,
+                            'source' => !empty($item['author']) ? $item['author'] : 'Google News Live',
+                            'url' => $item['link'] ?? '#',
+                            'published_at' => isset($item['pubDate']) ? date('d M Y', strtotime($item['pubDate'])) : 'Today',
+                            'image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=400&auto=format&fit=crop'
+                        ];
+                    }
+                }
             } catch (\Exception $e) {}
 
-            $fullNewsText = "";
-            $displayNews = [];
-            
-            if (!empty($articles) && is_array($articles)) {
-                foreach ($articles as $article) {
-                    $fullNewsText .= " " . ($article['title'] ?? '') . " " . ($article['description'] ?? '');
-                    
-                    $displayNews[] = [
-                        'title' => $article['title'] ?? 'No Headline Available',
-                        'source' => isset($article['source']['name']) ? $article['source']['name'] : 'Global Shipping Intelligence',
-                        'url' => $article['url'] ?? '#',
-                        'image' => $article['image'] ?? 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=400&auto=format&fit=crop'
-                    ];
-                }
-            }
-
-            // SMART FALLBACK BERITA: Jika API Limit / Kosong, Sediakan Berita Logistik Resmi
+            // Fallback Cerdas: Jika berita spesifik negara sangat sepi, ambil berita Logistik Maritim Global Live
             if (empty($displayNews)) {
-                $displayNews = [
-                    [
-                        'title' => "Global Trade & Maritime Operations Report for {$countryName}",
-                        'source' => 'Global Logistics Monitor',
-                        'url' => "https://news.google.com/search?q=" . urlencode($countryName . " logistics supply chain"),
-                        'image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=400&auto=format&fit=crop'
-                    ],
-                    [
-                        'title' => "Port Freight Flow & Supply Chain Resilience Update: {$countryName}",
-                        'source' => 'World Shipping News',
-                        'url' => "https://www.maritime-executive.com/",
-                        'image' => 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=400&auto=format&fit=crop'
-                    ]
-                ];
-                $fullNewsText = "growth stable improve increase supply chain freight shipping operations normal performance";
-            } else {
-                $fullNewsText = strtolower($fullNewsText);
+                $globalRssUrl = "https://api.rss2json.com/v1/api.json?rss_url=" . urlencode("https://news.google.com/rss/search?q=global+supply+chain+logistics+shipping&hl=en-US&gl=US&ceid=US:en");
+                try {
+                    $chGlobal = curl_init();
+                    curl_setopt($chGlobal, CURLOPT_URL, $globalRssUrl);
+                    curl_setopt($chGlobal, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($chGlobal, CURLOPT_SSL_VERIFYPEER, false);
+                    curl_setopt($chGlobal, CURLOPT_TIMEOUT, 5);
+                    $globalResponse = curl_exec($chGlobal);
+                    curl_close($chGlobal);
+
+                    $globalData = json_decode($globalResponse, true);
+                    if (isset($globalData['items']) && !empty($globalData['items'])) {
+                        foreach (array_slice($globalData['items'], 0, 4) as $item) {
+                            $title = strip_tags($item['title'] ?? 'Global Freight Update');
+                            $fullNewsText .= " " . $title;
+                            $displayNews[] = [
+                                'title' => $title,
+                                'source' => 'Global Logistics Monitor',
+                                'url' => $item['link'] ?? '#',
+                                'published_at' => isset($item['pubDate']) ? date('d M Y', strtotime($item['pubDate'])) : 'Today',
+                                'image' => 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=400&auto=format&fit=crop'
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {}
             }
+            $fullNewsText = strtolower($fullNewsText);
 
             // 5. LEXICON-BASED SENTIMENT ANALYSIS
             $positiveWords = DB::table('positive_words')->pluck('word')->toArray();
